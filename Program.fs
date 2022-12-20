@@ -1,14 +1,18 @@
 ﻿open System.IO
 
-let file = "/tmp/aoc/input.t"
+let file = "/tmp/aoc/input"
 
 type Id = int * int * int
 
-let idVal ((_,_,v):Id) = v 
+let idVal ((_,_,v):Id) = v
+let idOrig ((_,v,_):Id) = v
 
-let ids: Id list =
+let ids1: Id list =
     File.ReadAllLines file |> Seq.map int |> Seq.indexed
                            |> Seq.map (fun (i,v) -> (i,v,v)) |> Seq.toList
+
+// let ids = ids1 |> List.map (fun (i,v1,v2) -> (i,v1,v2 % ids1.Length))
+let ids = ids1                          
 
 type Node(id: Id, prev: Id, next: Id, prev20: Option<Id>, next20: Option<Id>) =
     member this.Id = id
@@ -59,7 +63,6 @@ let moveId (id:Id) (nodes:NodeMap) : NodeMap =
     let nodes = nodes.Add(node.Prev, nodes[node.Prev].SetNext(node.Next)) // removing this - but curr pos is after prev
     let nodes = nodes.Add(node.Next, nodes[node.Next].SetPrev(node.Prev))                     
     let rec jump (i: int) (curr:Id) : Id =
-        let i = i % nodes.Count 
         if i = 0 then curr
         elif i > 0 then
             jump (i-1) nodes[curr].Next
@@ -86,7 +89,7 @@ let nodesX = moveAll nodes ids
 printfn $"{nodeMapToString nodesX}"
 
 let getResult (nodes:NodeMap) =
-    let zero = nodes.Keys |> Seq.filter (fun id -> idVal id = 0) |> Seq.head
+    let zero = nodes.Keys |> Seq.filter (fun id -> idOrig id = 0) |> Seq.head
     printfn $"zero={zero}"
     let rec jump (i: int) (curr:Id) : Id =
         if i = 0 then curr
@@ -100,7 +103,24 @@ let getResult (nodes:NodeMap) =
     printfn $"n2000 = {n2000}"
     let n3000 = jump 1000 n2000
     printfn $"n3000 = {n3000}"
-    (idVal n1000) + (idVal n2000) + (idVal n3000)
+    (idOrig n1000) + (idOrig n2000) + (idOrig n3000)
 
 let res = getResult nodesX
 printfn $"RESULT: {res}"
+
+let nx = -20 % 7
+printfn $"-10/7 = {nx}"
+
+// zero=(694, 5000, 0)
+// n1000 = (1226, -8811, -3811)
+// n2000 = (3733, -5654, -654)
+// n3000 = (4723, -1396, -1396)
+// RESULT: -15861
+// -10/7 = -6
+
+// zero=(881, 0, 0)
+// n1000 = (3577, 8861, 8861)
+// n2000 = (2964, -4565, -4565)
+// n3000 = (4525, 9047, 9047)
+// RESULT: 13343
+// -10/7 = -6
