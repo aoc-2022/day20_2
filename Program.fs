@@ -2,19 +2,28 @@
 
 let file = "/tmp/aoc/input"
 
-type Id = int * int * int
+type Id = int * int64 * int
 
 let idVal ((_, _, v): Id) = v
 let idOrig ((_, v, _): Id) = v
 
-let ids1: Id list =
+let idsFromFile : Id list =
     File.ReadAllLines file
     |> Seq.map int
     |> Seq.indexed
-    |> Seq.map (fun (i, v) -> (i, v, v))
+    |> Seq.map (fun (i, v) -> (i, v |> int64, v))
     |> Seq.toList
 
-let ids = ids1 |> List.map (fun (i,v1,v2) -> (i,v1,v2 % (ids1.Length-1)))
+let toDecrypted (i,orig,v) =
+    let key = 811589153L
+    let orig = orig * key
+    let v = orig % ((idsFromFile.Length-1) |> int64)
+    let v = v |> int
+    (i,orig,v)
+
+let idsForTask1 = idsFromFile |> List.map (fun (i,v1,v2) -> (i,v1,v2 % (idsFromFile.Length-1)))
+let idsForTask2 = idsFromFile |> List.map toDecrypted
+
 // let ids = ids1
 
 type Node(id: Id, prev: Id, next: Id, prev20: Option<Id>, next20: Option<Id>) =
@@ -28,7 +37,7 @@ type Node(id: Id, prev: Id, next: Id, prev20: Option<Id>, next20: Option<Id>) =
     member this.SetNext(next: Id) = Node(id, prev, next, prev20, next20)
     member this.SetPrev(prev: Id) = Node(id, prev, next, prev20, next20)
 
-    override this.ToString() = $"{id |> idVal}"
+    override this.ToString() = $"{id |> idOrig}"
 
 let toNodes (ids: Id list) =
     let last: Id list = ids |> List.skip (ids.Length - 1)
@@ -36,7 +45,7 @@ let toNodes (ids: Id list) =
     printfn $"last = {last}"
     printfn $"first = {first}"
     let ids = [ last; ids; first ] |> List.concat
-    ids |> List.map (fun id -> $"{idVal id} ") |> String.concat " " |> printfn "%A"
+    ids |> List.map (fun id -> $"{idOrig id} ") |> String.concat " " |> printfn "%A"
 
     let rec toNodes (ids: Id list) =
         match ids with
@@ -57,13 +66,16 @@ let nodeMapToString (nodes: NodeMap) =
             curr :: (ids start nodes[curr].Next)
 
     (start :: (ids start (nodes[start].Next)))
-    |> List.map idVal
+    |> List.map idOrig
     |> List.map (fun i -> $"{i}")
     |> String.concat " "
     |> fun s -> $"NODES: [{s} ] {nodes.Count}"
 
-let nodes: Map<Id, Node> =
-    toNodes ids |> List.map (fun node -> node.Id, node) |> Map.ofList
+let nodesTask1: Map<Id, Node> =
+    toNodes idsForTask1 |> List.map (fun node -> node.Id, node) |> Map.ofList
+
+let nodesTask2: Map<Id,Node> =
+    toNodes idsForTask2 |> List.map (fun node -> node.Id, node) |> Map.ofList 
 
 let moveId (id: Id) (nodes: NodeMap) : NodeMap =
     let node = nodes[id]
@@ -83,8 +95,6 @@ let moveId (id: Id) (nodes: NodeMap) : NodeMap =
     let nodes = nodes.Add(id, node)
     nodes
 
-let nodes1 = moveId ids.Head nodes
-
 let rec moveAll (nodes: NodeMap) (ids: Id list) =
     match ids with
     | [] -> nodes
@@ -92,9 +102,11 @@ let rec moveAll (nodes: NodeMap) (ids: Id list) =
         let nodes = moveId id nodes
         moveAll nodes rest
 
-let nodesX = moveAll nodes ids
-
-printfn $"{nodeMapToString nodesX}"
+let rec mixN (n:int) (nodes: NodeMap) (ids: Id list) =
+    if n = 0 then nodes
+    else
+        let nodes = moveAll nodes ids 
+        mixN (n - 1) nodes ids
 
 let getResult (nodes: NodeMap) =
     let zero = nodes.Keys |> Seq.filter (fun id -> idOrig id = 0) |> Seq.head
@@ -113,38 +125,16 @@ let getResult (nodes: NodeMap) =
     printfn $"n3000 = {n3000}"
     (idOrig n1000) + (idOrig n2000) + (idOrig n3000)
 
-let res = getResult nodesX
-printfn $"RESULT: {res}"
+let resultNodesTask1 = moveAll nodesTask1 idsForTask1
+printfn $"{nodeMapToString resultNodesTask1}"
 
-let nx = -20 % 7
-printfn $"-10/7 = {nx}"
+let resultTask1 = getResult resultNodesTask1
+printfn $"RESULT 1: {resultTask1}"
 
-// zero=(694, 5000, 0)
-// n1000 = (1226, -8811, -3811)
-// n2000 = (3733, -5654, -654)
-// n3000 = (4723, -1396, -1396)
-// RESULT: -15861
-// -10/7 = -6
+let resultNodesTask2 = mixN 10 nodesTask2 idsForTask2
+printfn $"{nodeMapToString resultNodesTask2}"
 
-// zero=(881, 0, 0)
-// n1000 = (3577, 8861, 8861)
-// n2000 = (2964, -4565, -4565)
-// n3000 = (4525, 9047, 9047)
-// RESULT: 13343
-// -10/7 = -6
+let resultTask2 = getResult resultNodesTask2
+printfn $"RESULT 2: {resultTask2}"
 
-let test1 (nodes: NodeMap) =
-    let zero: Id = nodes.Keys |> Seq.filter (fun id -> idOrig id = 0) |> Seq.head
 
-    let rec jump (i: int) (curr: Id) : Id =
-        if i = 0 then curr
-        elif i > 0 then jump (i - 1) nodes[curr].Next
-        else jump (i + 1) nodes[curr].Prev
-
-    let oneRot = jump 5000 zero
-    let oneRot2 = jump 5000 zero
-    let node1 = jump -7628 zero
-    let node2 = jump -2628 zero
-    printfn $"nerfed: {oneRot} {oneRot2} not={node1} yes={node2}"
-
-test1 (nodes)
