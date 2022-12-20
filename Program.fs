@@ -2,14 +2,17 @@
 
 let file = "/tmp/aoc/input.t"
 
-type Id = int * int
+type Id = int * int * int
 
-let ids: (int * int) list =
-    File.ReadAllLines file |> Seq.map int |> Seq.indexed |> Seq.toList
+let idVal ((_,_,v):Id) = v 
+
+let ids: Id list =
+    File.ReadAllLines file |> Seq.map int |> Seq.indexed
+                           |> Seq.map (fun (i,v) -> (i,v,v)) |> Seq.toList
 
 type Node(id: Id, prev: Id, next: Id, prev20: Option<Id>, next20: Option<Id>) =
     member this.Id = id
-    member this.Value = snd id 
+    member this.Value = idVal id 
     member this.Prev = prev
     member this.Next = next
     member this.Prev20 = prev20
@@ -20,7 +23,7 @@ type Node(id: Id, prev: Id, next: Id, prev20: Option<Id>, next20: Option<Id>) =
     member this.SetPrev(prev:Id) =
         Node(id,prev,next,prev20,next20)
         
-    override this.ToString() = $"{id |> snd}"
+    override this.ToString() = $"{id |> idVal}"
 
 let toNodes (ids: Id list) =
     let last : Id list = ids |> List.skip (ids.Length - 1)
@@ -28,7 +31,7 @@ let toNodes (ids: Id list) =
     printfn $"last = {last}"
     printfn $"first = {first}"
     let ids = [ last; ids; first ] |> List.concat
-    ids |> List.map (fun id -> $"{snd id} ") |> String.concat " " |> printfn "%A"
+    ids |> List.map (fun id -> $"{idVal id} ") |> String.concat " " |> printfn "%A"
 
     let rec toNodes (ids: Id list) =
         match ids with
@@ -44,7 +47,7 @@ let nodeMapToString (nodes:NodeMap) =
         if start = curr then []
         else curr :: (ids start nodes[curr].Next)
     (start::(ids start (nodes[start].Next)))
-        |> List.map snd
+        |> List.map idVal 
         |> List.map (fun i -> $"{i}")
         |> String.concat " "
         |> fun s -> $"NODES: [{s} ] {nodes.Count}"
@@ -83,7 +86,7 @@ let nodesX = moveAll nodes ids
 printfn $"{nodeMapToString nodesX}"
 
 let getResult (nodes:NodeMap) =
-    let zero = nodes.Keys |> Seq.filter (fun id -> snd id = 0) |> Seq.head
+    let zero = nodes.Keys |> Seq.filter (fun id -> idVal id = 0) |> Seq.head
     printfn $"zero={zero}"
     let rec jump (i: int) (curr:Id) : Id =
         if i = 0 then curr
@@ -97,7 +100,7 @@ let getResult (nodes:NodeMap) =
     printfn $"n2000 = {n2000}"
     let n3000 = jump 1000 n2000
     printfn $"n3000 = {n3000}"
-    (snd n1000) + (snd n2000) + (snd n3000)
+    (idVal n1000) + (idVal n2000) + (idVal n3000)
 
 let res = getResult nodesX
 printfn $"RESULT: {res}"
